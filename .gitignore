@@ -1,0 +1,7 @@
+# ครอบคลุมทั้งโปรเจกต์
+Web-be/.env
+Web-fe/.env
+.env
+node_modules/
+dist/
+build/
