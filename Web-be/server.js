@@ -5,9 +5,9 @@ const cors = require("cors");
 const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
 const mongoose = require("mongoose");
-const path = require("path"); 
+const path = require("path");
 
-// 🚏 IMPORT ROUTES (เหลือแค่ของเดิมที่ใช้งานได้)
+// 🚏 IMPORT ROUTES
 const authRoutes = require("./routes/authRoutes");
 const productRoutes = require("./routes/products");
 const ordersRoute = require("./routes/orders");
@@ -25,13 +25,25 @@ mongoose.connect(process.env.MONGO_URI)
 // ====================
 // 🔧 MIDDLEWARE
 // ====================
-// ใส่ Helmet แบบนี้ไว้ครับ เพื่อไม่ให้มันบล็อกรูปสินค้า
 app.use(helmet({
-  crossOriginResourcePolicy: false, 
+  crossOriginResourcePolicy: false, // อนุญาตให้ดึงรูปจาก Server ไปแสดงที่หน้าเว็บได้
 }));
 
+// แก้ไขจุดนี้: รองรับทั้ง Local และ Vercel
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://mini-projet-henna.vercel.app"
+];
+
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: function (origin, callback) {
+    // อนุญาตถ้าไม่มี origin (เช่น การเรียกจาก Postman) หรือ origin อยู่ในรายการที่กำหนด
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true
 }));
 
@@ -42,11 +54,10 @@ app.use(cookieParser());
 // ====================
 // 📂 STATIC FILES
 // ====================
-// บรรทัดนี้สำคัญมาก เพื่อให้รูปสินค้าในโฟลเดอร์ uploads โชว์ได้
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ====================
-// 🚏 ROUTES (ลบ /users ออกแล้ว)
+// 🚏 ROUTES
 // ====================
 app.use("/auth", authRoutes);
 app.use("/products", productRoutes);
@@ -55,7 +66,7 @@ app.use("/coupons", couponRoutes);
 
 // test route
 app.get("/", (req, res) => {
-  res.send("API RUNNING OK");
+  res.send("API RUNNING OK - Ready for Vercel & Local");
 });
 
 // ====================
@@ -65,6 +76,7 @@ app.use((err, req, res, next) => {
   console.error("🔥 REAL ERROR:", err);
   res.status(err.status || 500).json({
     message: err.message,
+    // ป้องกันการรั่วไหลของข้อมูล (OWASP) จะโชว์ stack เฉพาะตอน development เท่านั้น
     stack: process.env.NODE_ENV === "development" ? err.stack : {}
   });
 });
